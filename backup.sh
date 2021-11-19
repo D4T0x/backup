@@ -55,6 +55,7 @@ function backupCron(){
 			echo -e "\n\n"
 		else
 			echo -e "\n${redColour}You don't have permisions to write in $absD. Returning to menu...${endColour}"
+			#log ""
 			menu
 		fi
 	else
@@ -66,7 +67,6 @@ function backupCron(){
 	read -p 'Do you agree? (y/n)' y
 	if [ $y = y ]; then
 		(crontab -l; echo "$(echo $hour | cut -d ':' -f2) $(echo $hour | cut -d ':' -f1) * * * ./backupCron.sh") | sort -u | crontab -
-		# Crear la tarea cron
 	else
 		echo -e "\n"
 		read -p 'Do you want to close?(y/n)' close
@@ -83,6 +83,15 @@ function backup(){
 	# Falta directorio relativo
 	echo -e "\n${greenColour}Perform a backup${endColour}"
 	read -p 'Path of the directory: ' directory
+    #Verificar ruta absoluta
+    if [ $(echo $directory | cut -c 1) != "/" ]; then
+        if [ $(echo $directory | cut -c 1) == "." ]; then
+            $directory = $(echo $(pwd)$(echo $directory | cut -c 2-))
+        else
+            $directory = $(echo $(pwd)/$directory)
+        fi
+    fi
+    echo $directory
 	#funcion para ver si el directorio indicado es correcto
 	if [ -d "$directory" ]; then
 		if [ -w "$directory" ]; then
@@ -94,7 +103,7 @@ function backup(){
 				#name=$(echo $(echo $directory | rev | cut -d '/' -f1 | rev)-$(date '+%y%m%d-%H%M'))
 				name=$(echo $(basename $directory)-$(date '+%y%m%d-%H%M'))
 				echo -e "\n${greemColour}Backup name: $name${endColour}"
-				if [ -d "/backups" ]; then
+				if [ -d "$HOME/backups" ]; then
 					echo -e "\n${greenColour}Directory $HOME/backup found, making backup ...${endColour}"
 				else
 					echo -e "\n${redColour}Directory $HOME/backup not found${endColour}"
@@ -104,9 +113,11 @@ function backup(){
 				tar -cfz /backups/$name.tar $directory/*
 			else
 				read -p 'Do you want to proceed with an other directory(y/n)?' proceed
+				log "Cancelada la seleccion de directorio, directorio seleccionado: $directory"
 				if [ $proceed = y ]; then
 					backup
 				else
+					log "Programa cerrado al cancelar la seleccion de directorio"
 					ctrl_c
 				fi
 			fi
@@ -131,7 +142,7 @@ function backup(){
 }
 
 function log(){
-	echo $1 >> /backups/$(date '+%F')backup.log
+	echo "$(date '+%F') $(date '+%H:%M') $1" >> $HOME/backups/backup.log
 }
 
 menu
