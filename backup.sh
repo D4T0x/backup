@@ -15,10 +15,11 @@ function ctrl_c(){
 }
 
 function init(){
-	if [ ! -d $HOME ]; then
-		echo "No existe el directorio backup"
-		mkdir $HOME/backup	
-		mkdir $HOME/backup/log
+	if [ ! -d $HOME/backup ]; then
+		mkdir $HOME/backup
+	fi
+	if [ ! -f $HOME/backup/backup.log ]; then
+		touch $HOME/backup/backup.log
 	fi
 }
 
@@ -51,26 +52,48 @@ function menu(){
 }
 
 function backupCron(){
+	clear
 	echo -e "\n${greenColour}Backup Cron${endColour}"
 	read -p 'Absolute path of the direcroty: ' absD
 	read -p 'Hour for the backup (0:00-23:59) ' hour
 	echo -e "\nThe backup will execute at $hour."
 	read -p 'Do you agree? (y/n)' y
 	if [ $y = y ]; then
-		(crontab -l; echo "$(echo $hour | cut -d ':' -f2) $(echo $hour | cut -d ':' -f1) * * * ./backupCron.sh") | sort -u | crontab -
+		ho=$(echo $hour | cut -d ':' -f1)
+		min=$(echo $hour | cut -d ':' -f2)
+		if [[ "$ho" =~ ^[0-9]+$ ]] && [ "$ho" -ge 0 ] && [ "$ho" -le 24 ]; then 
+			if [[ "$min" =~ ^[0-9]+$ ]] && [ "$min" -ge 0 ] && [ "$min" -le 60 ]; then
+				if [ -d $absD ]; then
+					(crontab -l; echo "$min $ho * * * $(pwd)/backupCron.sh $absD") | sort -u | crontab -
+				else
+					echo -e "\n${redColour}[!] Directory for corn not found\n${endColour}"
+					log "Error - Directory selected for cron $absD not found"
+					ctrl_c
+				fi
+			else
+				echo -e "\n${redColour}[!] Bad time for cron\n${endColour}"
+				log "Error - Bad time for cron - $hour - $min"
+				ctrl_c
+			fi
+		else
+			echo -e "\n${redColour}[!] Bad time for cron\n${endColour}"
+			log "Error - Bad time for cron - $hour - $ho"
+			ctrl_c
+		fi
 	else
 		echo -e "\n"
 		read -p 'Do you want to close?(y/n)' close
 		if [ $close = y ]; then
 			ctr_c
 		else
-			menu
+			backupCron
 		fi
 	fi
 }
 
 
 function backup(){
+	clear
 	echo -e "\n${greenColour}Perform a backup${endColour}"
 	read -p 'Path of the directory: ' directory
     if [ $(echo $directory | cut -c 1) != "/" ]; then
@@ -93,7 +116,7 @@ function backup(){
 			echo -e "\n${greemColour}Backup name: $name${endColour}"
 			if [ -d "$HOME/backup" ]; then
 				echo -e "\n${greenColour}Directory $HOME/backup found, making backup ...${endColour}"
-				tar -czf $HOME/backup/$name.tar.gz $directory
+				tar -czf $HOME/backup/$name.tar.gz $directory 2> log
 			fi
 		else
 			log "Error - Directory $directory not found"
@@ -111,15 +134,20 @@ function backup(){
 }
 
 function log(){
-	echo "$(date '+%F') $(date '+%H:%M') $1" >> $HOME/backups/backup.log
+	echo "$(date '+%F') $(date '+%H:%M') $1" >> $HOME/backup/backup.log
 }
 
 function restoreBackup(){
+	clear
 	echo -e "\nMenu 3\n"
-	echo -e "\n${greenColour}The list of existing backups is:\n\n${endColour}$(ls --ignore=log $HOME/backup)"
+	echo -e "\n${greenColour}The list of existing backups is:\n\n${endColour}$(ls --ignore=backup.log $HOME/backup)"
 	echo -e "\n"
 	read -p "Which one you want to recover:" recover
-
+	if [ -f $recover ]; then
+		tar -xzf $recover
+	else
+		log "Error - Backup selected to recover not found. Input: $recover"
+	fi
 }
 
 menu
