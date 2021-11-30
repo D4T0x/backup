@@ -114,4 +114,12 @@ function log(){
 	echo "$(date '+%F') $(date '+%H:%M') $1" >> $HOME/backups/backup.log
 }
 
+function restoreBackup(){
+	echo -e "\nMenu 3\n"
+	echo -e "\n${greenColour}The list of existing backups is:\n\n${endColour}$(ls --ignore=log $HOME/backup)"
+	echo -e "\n"
+	read -p "Which one you want to recover:" recover
+
+}
+
 menu
