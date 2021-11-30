@@ -6,11 +6,6 @@
 greenColour="\e[0;32m\033[1m"
 endColour="\033[0m\e[0m"
 redColour="\e[0;31m\033[1m"
-blueColour="\e[0;34m\033[1m"
-yellowColour="\e[0;33m\033[1m"
-purpleColour="\e[0;35m\033[1m"
-turquoiseColour="\e[0;36m\033[1m"
-grayColour="\e[0;37m\033[1m"
 
 trap ctrl_c INT
 
@@ -19,10 +14,19 @@ function ctrl_c(){
 	exit 1
 }
 
+function init(){
+	if [ ! -d $HOME ]; then
+		echo "No existe el directorio backup"
+		mkdir $HOME/backup	
+		mkdir $HOME/backup/log
+	fi
+}
+
 function menu(){
 	echo -e "\nASO 2021-2022\nSanz Gil Enrique"
 	echo -e "\nBackup tool for directories\n"
 	echo -e "---------------------------"
+	init
 	echo -e "\nMenu\n"
 	echo -e "\n1) ${greenColour}Perform a backup${endColour}"
 	echo -e "\n2) ${greenColour}Perform a backup with cron${endColour}"
@@ -47,21 +51,8 @@ function menu(){
 }
 
 function backupCron(){
-	
 	echo -e "\n${greenColour}Backup Cron${endColour}"
 	read -p 'Absolute path of the direcroty: ' absD
-	if [ -d "$absD"]; then
-		if [ -w $"$absD" ]; then
-			echo -e "\n\n"
-		else
-			echo -e "\n${redColour}You don't have permisions to write in $absD. Returning to menu...${endColour}"
-			#log ""
-			menu
-		fi
-	else
-		echo -e "\n${redColour}Directory not found returning to menu ...${endColour}"
-		menu
-	fi
 	read -p 'Hour for the backup (0:00-23:59) ' hour
 	echo -e "\nThe backup will execute at $hour."
 	read -p 'Do you agree? (y/n)' y
@@ -80,64 +71,42 @@ function backupCron(){
 
 
 function backup(){
-	# Falta directorio relativo
 	echo -e "\n${greenColour}Perform a backup${endColour}"
 	read -p 'Path of the directory: ' directory
-    #Verificar ruta absoluta
     if [ $(echo $directory | cut -c 1) != "/" ]; then
         if [ $(echo $directory | cut -c 1) == "." ]; then
-            $directory = $(echo $(pwd)$(echo $directory | cut -c 2-))
+			if [ ${#directory} -le 2 ]; then
+				directory=$(pwd)
+			else	
+            	directory=$(echo $(pwd)$(echo $directory | cut -c 2-))
+			fi
         else
-            $directory = $(echo $(pwd)/$directory)
+            directory=$(echo $(pwd)/$directory)
         fi
     fi
-    echo $directory
-	#funcion para ver si el directorio indicado es correcto
-	if [ -d "$directory" ]; then
-		if [ -w "$directory" ]; then
-			echo -e "\n\nWe will do a backup of the directory $directory"
-			read -p 'Do you want to proceed(y/n)? ' proceed
-			if [[ $proceed = y ]]; then
-				# Realizamos el backup
-				echo -e "\nRealizando backup"
-				#name=$(echo $(echo $directory | rev | cut -d '/' -f1 | rev)-$(date '+%y%m%d-%H%M'))
-				name=$(echo $(basename $directory)-$(date '+%y%m%d-%H%M'))
-				echo -e "\n${greemColour}Backup name: $name${endColour}"
-				if [ -d "$HOME/backups" ]; then
-					echo -e "\n${greenColour}Directory $HOME/backup found, making backup ...${endColour}"
-				else
-					echo -e "\n${redColour}Directory $HOME/backup not found${endColour}"
-					mkdir /backups
-					echo -e "\n${greenColour}Direcrory $HOME/backup created, making backup...${endColour}"
-				fi
-				tar -cfz /backups/$name.tar $directory/*
-			else
-				read -p 'Do you want to proceed with an other directory(y/n)?' proceed
-				log "Cancelada la seleccion de directorio, directorio seleccionado: $directory"
-				if [ $proceed = y ]; then
-					backup
-				else
-					log "Programa cerrado al cancelar la seleccion de directorio"
-					ctrl_c
-				fi
+	echo -e "\n\nWe will do a backup of the directory $directory"
+	read -p 'Do you want to proceed(y/n)? ' proceed
+	if [[ $proceed = y ]]; then
+		if [ -d $directory ]; then
+			echo -e "\nRealizando backup"
+			name=$(echo $(basename $directory)-$(date '+%y%m%d-%H%M'))
+			echo -e "\n${greemColour}Backup name: $name${endColour}"
+			if [ -d "$HOME/backup" ]; then
+				echo -e "\n${greenColour}Directory $HOME/backup found, making backup ...${endColour}"
+				tar -czf $HOME/backup/$name.tar.gz $directory
 			fi
 		else
-			echo -e "\n${redColour}You cant write in this directory${endColour}"
-			read -p 'Do you want to proceed with an other directory(y/n)?' p
-			if [ $p = y ]; then
-				backup
-			else
-				ctrl_c
-			fi
+			log "Error - Directory $directory not found"
 		fi
 	else
-		echo -e "\n${redColour}Directory not found${endColour}"
-			read -p 'Do you want to proceed with an other directory(y/n)?' p
-			if [ $p = y ]; then
-				backup
-			else
-				ctrl_c
-			fi
+		read -p 'Do you want to proceed with an other directory(y/n)?' proceed
+		log "Error - Cancelada la seleccion de directorio, directorio seleccionado: $directory"
+		if [ $proceed = y ]; then
+			backup
+		else
+			log "Error - Programa cerrado al cancelar la seleccion de directorio"
+			ctrl_c
+		fi
 	fi
 }
 
