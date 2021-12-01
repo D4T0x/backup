@@ -101,7 +101,7 @@ function backup(){
 			if [ ${#directory} -le 2 ]; then
 				directory=$(pwd)
 			else	
-            	directory=$(echo $(pwd)$(echo $directory | cut -c 2-))
+            			directory=$(echo $(pwd)$(echo $directory | cut -c 2-))
 			fi
         else
             directory=$(echo $(pwd)/$directory)
